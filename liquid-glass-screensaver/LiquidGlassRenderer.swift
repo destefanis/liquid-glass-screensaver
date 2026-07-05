@@ -2,9 +2,8 @@
 //  LiquidGlassRenderer.swift
 //  liquid-glass-screensaver
 //
-//  Renderer for a shader composition exported from Gradient Studio
-//  (https://gradient.studio), trimmed to the passes this screensaver
-//  actually renders.  All parameter values are baked from the export.
+//  Multi-pass Metal renderer for the liquid glass composition.
+//  All effect parameter values are baked in below.
 //
 
 import Metal
@@ -29,9 +28,10 @@ struct ProgressiveBlurParams {
 }
 
 /// Fresnel — stored fields match the Metal FresnelParams layout
-/// (verified against GPU pipeline reflection).  The exporter doesn't
-/// emit `falloffCurve`, `glowMode`, `innerRadius`, `areaLightSize`,
-/// `lightHeight`, or `opacity`, so the init fills in editor defaults.
+/// (verified against GPU pipeline reflection).  `falloffCurve`,
+/// `glowMode`, `innerRadius`, `areaLightSize`, `lightHeight`, and
+/// `opacity` aren't part of the baked data, so the init fills in
+/// sensible defaults.
 struct FresnelParams {
     var fresnelType: Int32
     var center: SIMD2<Float>
@@ -104,8 +104,8 @@ struct ProceduralGrainParams {
 
 
 /// Water — stored fields match the Metal WaterParams layout; the
-/// custom init accepts the app's model-order arguments the
-/// exporter emits and maps them into GPU order.
+/// custom init accepts model-order arguments and maps them into
+/// GPU order.
 struct WaterParams {
     var resolution: SIMD2<Float>
     var time: Float
@@ -140,9 +140,9 @@ struct WaterParams {
 }
 
 /// Skew — the Metal struct wants a precomputed rotation matrix,
-/// plane normal, shear tangents and aspect ratio; the exporter
-/// passes raw Euler angles, so this init performs the same CPU
-/// precomputation the app does (R = Rx·Ry·Rz, normal = column 2).
+/// plane normal, shear tangents and aspect ratio; this init takes
+/// raw Euler angles and does that CPU precomputation
+/// (R = Rx·Ry·Rz, normal = column 2).
 struct SkewParams {
     var rotation: simd_float3x3
     var planeNormal: SIMD3<Float>
@@ -299,13 +299,13 @@ struct MetalLayerProperties {
 
 // MARK: - Renderer
 
-class ExportedShaderRenderer: NSObject, MTKViewDelegate {
+class LiquidGlassRenderer: NSObject, MTKViewDelegate {
     let device: MTLDevice
     let commandQueue: MTLCommandQueue
     var startTime: CFAbsoluteTime = 0
 
-    /// User-adjustable multiplier (0–1) on the exported fresnel glow
-    /// intensity.  0 disables the pass, 1 is the full exported look.
+    /// User-adjustable multiplier (0–1) on the baked fresnel glow
+    /// intensity.  0 disables the pass, 1 is the full baked look.
     var fresnelIntensityScale: Float = 0.5
 
     /// Dark mode swaps the light (#ddd) background for black — both the
@@ -408,7 +408,7 @@ class ExportedShaderRenderer: NSObject, MTKViewDelegate {
     private func buildPipelines() {
         // Inside a .saver bundle the "default" library must be loaded from
         // this bundle, not the host process (legacyScreenSaver) main bundle.
-        guard let library = try? device.makeDefaultLibrary(bundle: Bundle(for: ExportedShaderRenderer.self)) else {
+        guard let library = try? device.makeDefaultLibrary(bundle: Bundle(for: LiquidGlassRenderer.self)) else {
             print("Failed to create Metal library")
             return
         }
@@ -678,7 +678,7 @@ class ExportedShaderRenderer: NSObject, MTKViewDelegate {
     waveStrength: 1.0,
     glowSpeed: 1.0,
     glowStrength: 1.0,
-    speed: 0.344,  // exported 0.43, dialed down 20%
+    speed: 0.344,  // baked 0.43, dialed down 20%
     delay: 1.0,
     colorMode: 1,
     paletteLock: 1,
@@ -731,7 +731,7 @@ class ExportedShaderRenderer: NSObject, MTKViewDelegate {
     waveStrength: 1.0,
     glowSpeed: 1.0,
     glowStrength: 1.0,
-    speed: 0.344,  // exported 0.43, dialed down 20%
+    speed: 0.344,  // baked 0.43, dialed down 20%
     delay: 1.8000001,
     colorMode: 1,
     paletteLock: 1,
@@ -784,7 +784,7 @@ class ExportedShaderRenderer: NSObject, MTKViewDelegate {
     waveStrength: 1.0,
     glowSpeed: 1.0,
     glowStrength: 1.0,
-    speed: 0.344,  // exported 0.43, dialed down 20%
+    speed: 0.344,  // baked 0.43, dialed down 20%
     delay: 0.0,
     colorMode: 1,
     paletteLock: 0,

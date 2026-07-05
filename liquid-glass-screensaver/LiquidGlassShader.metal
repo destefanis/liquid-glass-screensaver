@@ -2,9 +2,9 @@
 //  LiquidGlassShader.metal
 //  liquid-glass-screensaver
 //
-//  Shader composition exported from Gradient Studio
-//  (https://gradient.studio), trimmed to the passes this
-//  screensaver actually renders.
+//  The liquid glass shader composition: soft layer fills plus a
+//  chain of full-screen effect passes (water caustics, 3D liquid
+//  metal, progressive blur, skew, grain, fresnel).
 //
 
 #include <metal_stdlib>
@@ -47,7 +47,6 @@ struct LayerProperties {
 // MARK: - Grain Helpers
 
 //
-//  Gradient Studio
 //
 //  Common utility functions for grain effects
 //
@@ -156,7 +155,6 @@ float calculateShapeMask(float2 uv, float2 center, int shape, float radius,
 // MARK: - Procedural Grain Effect
 
 //
-//  Gradient Studio
 //
 //  Procedural grain effect with various blend modes
 //
@@ -224,7 +222,6 @@ fragment float4 procedural_grain_fragment(EffectVertexOut in [[stage_in]],
 // MARK: - 3D Liquid Metal Effect
 
 //
-//  Gradient Studio
 //
 //  3D Liquid Metal — the liquid metal stripe material (chromatic stripes,
 //  edge contour warping, wave + glow clocks) applied to a raymarched SDF
@@ -756,7 +753,6 @@ fragment float4 liquid_metal_3d_fragment(EffectVertexOut in [[stage_in]],
 // MARK: - Fresnel Effect
 
 //
-//  Gradient Studio
 //
 //  Fresnel lighting effect with multiple types and blend modes
 //
@@ -1134,7 +1130,6 @@ fragment float4 fresnel_fragment(EffectVertexOut in [[stage_in]],
 // MARK: - Progressive Blur Effect
 
 //
-//  Gradient Studio
 //
 //  Progressive directional blur with spatial masking
 //
@@ -1313,7 +1308,6 @@ fragment float4 progressive_blur_fragment(EffectVertexOut in [[stage_in]],
 // MARK: - Skew Effect
 
 //
-//  Gradient Studio
 //
 //  3D transform effect: rotates the input content around its centre in 3-space
 //  (pitch / yaw / roll) with a perspective divide, then samples with inverse
@@ -1446,7 +1440,6 @@ fragment float4 skew_fragment(EffectVertexOut in [[stage_in]],
 // MARK: - Water Effect
 
 //
-//  Gradient Studio
 //
 //  Water-surface distortion with animated caustic realism — refracts the
 //  layer below through layered caustic noise + simplex waves, with an

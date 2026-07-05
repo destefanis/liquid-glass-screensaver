@@ -2,7 +2,7 @@
 //  LiquidGlassScreensaverView.swift
 //  liquid-glass-screensaver
 //
-//  Hosts the Gradient Studio shader composition inside a ScreenSaverView.
+//  Hosts the liquid glass shader composition inside a ScreenSaverView.
 //  The @objc name matches INFOPLIST_KEY_NSPrincipalClass so the system
 //  can instantiate this class from the bundle.
 //
@@ -14,7 +14,7 @@ import MetalKit
 class LiquidGlassScreensaverView: ScreenSaverView {
 
     private var metalView: MTKView?
-    private var renderer: ExportedShaderRenderer?
+    private var renderer: LiquidGlassRenderer?
 
     override init?(frame: NSRect, isPreview: Bool) {
         super.init(frame: frame, isPreview: isPreview)
@@ -56,7 +56,7 @@ class LiquidGlassScreensaverView: ScreenSaverView {
         mtkView.enableSetNeedsDisplay = false
         mtkView.preferredFramesPerSecond = 60
 
-        guard let renderer = ExportedShaderRenderer(metalView: mtkView) else {
+        guard let renderer = LiquidGlassRenderer(metalView: mtkView) else {
             return
         }
 
