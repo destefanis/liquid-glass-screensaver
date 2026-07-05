@@ -6,7 +6,7 @@ A macOS screensaver rendering a liquid glass shader composition — three glass 
 
 ## Install (prebuilt)
 
-Grab `liquid-glass-screensaver.zip` from the [latest release](https://github.com/destefanis/liquid-glass-screensaver/releases/latest), unzip, and double-click the `.saver` (or copy it to `~/Library/Screen Savers/`). The build is Developer ID-signed but not notarized — if macOS blocks it, approve it under System Settings → Privacy & Security → "Open Anyway".
+Grab `liquid-glass-screensaver.zip` from the [latest release](https://github.com/destefanis/liquid-glass-screensaver/releases/latest), unzip, and double-click the `.saver` (or copy it to `~/Library/Screen Savers/`), then select it in System Settings → Screen Saver. The build is Developer ID-signed and notarized.
 
 ## Build & Install
 
