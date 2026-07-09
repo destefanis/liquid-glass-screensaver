@@ -1,6 +1,6 @@
-# Liquid Glass Screensaver
+# Liquid Gas Screensaver
 
-A macOS screensaver that renders a liquid glass shader composition: three glass orbs floating over animated water caustics. Includes a light and dark mode, with options for controlling the fresnel glow. I thought it would be fun to open source this so others could build and learn from it!
+A macOS screensaver that renders a liquid glass shader composition: three glass orbs floating over animated water caustics. Automatically follows the system Light/Dark Mode setting and smoothly blends between the existing light and dark backgrounds when the system appearance changes.
 
 ![preview](liquid-glass-screensaver/thumbnail.png)
 
@@ -16,7 +16,7 @@ cp -R ~/Library/Developer/Xcode/DerivedData/liquid-glass-screensaver-*/Build/Pro
 killall legacyScreenSaver 2>/dev/null
 ```
 
-Then pick **liquid-glass-screensaver** in System Settings → Screen Saver. **Options…** has a fresnel glow slider and a dark background toggle.
+Then pick **liquid-glass-screensaver** in System Settings → Screen Saver. **Options…** has a fresnel glow slider; the saver follows the system appearance automatically.
 
 (Or open the project in Xcode, ⌘B, and copy the built `.saver` to `~/Library/Screen Savers/`.)
 
