@@ -64,7 +64,7 @@ class LiquidGlassScreensaverView: ScreenSaverView {
         self.metalView = mtkView
         self.renderer = renderer
         renderer.fresnelIntensityScale = Self.storedFresnelScale()
-        renderer.darkMode = Self.storedDarkMode()
+        renderer.setDarkMode(Self.systemUsesDarkMode(), animated: false)
         mtkView.frame = aspectFillFrame()
     }
 
@@ -168,6 +168,12 @@ class LiquidGlassScreensaverView: ScreenSaverView {
             name: Notification.Name("com.apple.screensaver.willstop"),
             object: nil
         )
+        DistributedNotificationCenter.default.addObserver(
+            self,
+            selector: #selector(interfaceThemeDidChange),
+            name: Notification.Name("AppleInterfaceThemeChangedNotification"),
+            object: nil
+        )
         NSWorkspace.shared.notificationCenter.addObserver(
             self,
             selector: #selector(systemWillSleep),
@@ -186,10 +192,13 @@ class LiquidGlassScreensaverView: ScreenSaverView {
         exit(0)
     }
 
+    @objc private func interfaceThemeDidChange(_ notification: Notification) {
+        renderer?.setDarkMode(Self.systemUsesDarkMode(), animated: true)
+    }
+
     // MARK: - Settings (Options sheet)
 
     private static let fresnelScaleKey = "fresnelIntensityScale"
-    private static let darkModeKey = "darkModeEnabled"
 
     private static var saverDefaults: ScreenSaverDefaults? {
         let moduleName = Bundle(for: LiquidGlassScreensaverView.self).bundleIdentifier
@@ -209,21 +218,15 @@ class LiquidGlassScreensaverView: ScreenSaverView {
         defaults.synchronize()
     }
 
-    static func storedDarkMode() -> Bool {
-        guard let defaults = saverDefaults else { return false }
-        defaults.register(defaults: [darkModeKey: false])
-        return defaults.bool(forKey: darkModeKey)
-    }
-
-    private static func saveDarkMode(_ value: Bool) {
-        guard let defaults = saverDefaults else { return }
-        defaults.set(value, forKey: darkModeKey)
-        defaults.synchronize()
+    private static func systemUsesDarkMode() -> Bool {
+        if NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua {
+            return true
+        }
+        return UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
     }
 
     private var configSheet: NSWindow?
     private var fresnelSlider: NSSlider?
-    private var darkModeCheckbox: NSButton?
 
     override var hasConfigureSheet: Bool { true }
 
@@ -232,46 +235,45 @@ class LiquidGlassScreensaverView: ScreenSaverView {
         // NSWindow from a previously-wedged host re-presents a frozen
         // sheet (same trap as the exit(0) lifecycle above).
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 380, height: 190),
+            contentRect: NSRect(x: 0, y: 0, width: 380, height: 170),
             styleMask: [.titled],
             backing: .buffered,
             defer: false
         )
-        window.title = "Liquid Glass"
+        window.title = "Liquid Gas"
         window.isReleasedWhenClosed = false
 
-        let content = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: 190))
+        let content = NSView(frame: NSRect(x: 0, y: 0, width: 380, height: 170))
 
         let label = NSTextField(labelWithString: "Fresnel glow")
-        label.frame = NSRect(x: 20, y: 148, width: 200, height: 20)
+        label.frame = NSRect(x: 20, y: 128, width: 200, height: 20)
         content.addSubview(label)
 
         let slider = NSSlider(value: Double(Self.storedFresnelScale()),
                               minValue: 0.0, maxValue: 1.0,
                               target: nil, action: nil)
-        slider.frame = NSRect(x: 20, y: 116, width: 340, height: 24)
+        slider.frame = NSRect(x: 20, y: 96, width: 340, height: 24)
         content.addSubview(slider)
         fresnelSlider = slider
 
         let offLabel = NSTextField(labelWithString: "Off")
         offLabel.font = .systemFont(ofSize: 10)
         offLabel.textColor = .secondaryLabelColor
-        offLabel.frame = NSRect(x: 20, y: 98, width: 60, height: 14)
+        offLabel.frame = NSRect(x: 20, y: 78, width: 60, height: 14)
         content.addSubview(offLabel)
 
         let fullLabel = NSTextField(labelWithString: "Full")
         fullLabel.font = .systemFont(ofSize: 10)
         fullLabel.textColor = .secondaryLabelColor
         fullLabel.alignment = .right
-        fullLabel.frame = NSRect(x: 300, y: 98, width: 60, height: 14)
+        fullLabel.frame = NSRect(x: 300, y: 78, width: 60, height: 14)
         content.addSubview(fullLabel)
 
-        let darkCheckbox = NSButton(checkboxWithTitle: "Dark background",
-                                    target: nil, action: nil)
-        darkCheckbox.state = Self.storedDarkMode() ? .on : .off
-        darkCheckbox.frame = NSRect(x: 20, y: 62, width: 200, height: 20)
-        content.addSubview(darkCheckbox)
-        darkModeCheckbox = darkCheckbox
+        let appearanceLabel = NSTextField(labelWithString: "Appearance follows the system Light/Dark Mode setting.")
+        appearanceLabel.font = .systemFont(ofSize: 12)
+        appearanceLabel.textColor = .secondaryLabelColor
+        appearanceLabel.frame = NSRect(x: 20, y: 54, width: 340, height: 18)
+        content.addSubview(appearanceLabel)
 
         let cancelButton = NSButton(title: "Cancel", target: self,
                                     action: #selector(cancelConfig))
@@ -298,11 +300,6 @@ class LiquidGlassScreensaverView: ScreenSaverView {
             Self.saveFresnelScale(value)
             renderer?.fresnelIntensityScale = value
         }
-        if let checkbox = darkModeCheckbox {
-            let enabled = checkbox.state == .on
-            Self.saveDarkMode(enabled)
-            renderer?.darkMode = enabled
-        }
         dismissConfig()
     }
 
@@ -316,7 +313,6 @@ class LiquidGlassScreensaverView: ScreenSaverView {
             configSheet = nil
         }
         fresnelSlider = nil
-        darkModeCheckbox = nil
     }
 
     // MARK: - Debug breadcrumbs

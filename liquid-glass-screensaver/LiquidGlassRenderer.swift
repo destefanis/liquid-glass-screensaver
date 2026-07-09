@@ -308,9 +308,18 @@ class LiquidGlassRenderer: NSObject, MTKViewDelegate {
     /// intensity.  0 disables the pass, 1 is the full baked look.
     var fresnelIntensityScale: Float = 0.5
 
-    /// Dark mode swaps the light (#ddd) background for black — both the
-    /// clear color and the full-canvas background layer.
-    var darkMode: Bool = false
+    /// The renderer eases between light and dark palettes so system
+    /// appearance changes never snap mid-animation.
+    var darkMode: Bool {
+        get { themeTargetLevel >= 0.5 }
+        set { setDarkMode(newValue, animated: false) }
+    }
+
+    private let themeTransitionDuration: Float = 1.4
+    private var themeLevel: Float = 0.0
+    private var themeStartLevel: Float = 0.0
+    private var themeTargetLevel: Float = 0.0
+    private var themeTransitionStart: CFAbsoluteTime = CFAbsoluteTimeGetCurrent()
 
     // Canvas configuration (baked from export)
     let canvasSize = CGSize(width: 1920.0, height: 1080.0)
@@ -326,11 +335,11 @@ class LiquidGlassRenderer: NSObject, MTKViewDelegate {
     var waterPipelineState: MTLRenderPipelineState?
     var passthroughPipelineState: MTLRenderPipelineState?
 
-    // Background color
-    let backgroundR: Float = 0.8666667
-    let backgroundG: Float = 0.8666667
-    let backgroundB: Float = 0.8666667
-    let backgroundA: Float = 1.0
+    // Background colors
+    private let lightBackground = SIMD4<Float>(0.8666667, 0.8666667, 0.8666667, 1.0)
+    private let lightLayerBackground = SIMD4<Float>(0.8412972, 0.8412972, 0.8412972, 1.0)
+    private let darkBackground = SIMD4<Float>(0.0, 0.0, 0.0, 1.0)
+    private let darkLayerBackground = SIMD4<Float>(0.0, 0.0, 0.0, 1.0)
 
     // Ping-pong textures for multi-pass effects
     var pingTexture: MTLTexture?
@@ -344,9 +353,7 @@ class LiquidGlassRenderer: NSObject, MTKViewDelegate {
     func getMetalLayers() -> [MetalLayerProperties] {
         return [
             MetalLayerProperties(
-                color: darkMode
-                    ? SIMD4<Float>(0.0, 0.0, 0.0, 1.0)
-                    : SIMD4<Float>(0.8412972, 0.8412972, 0.8412972, 1.0),
+                color: themeMix(lightLayerBackground, darkLayerBackground),
                 center: SIMD2<Float>(0.5, 0.5),
                 radius: 0.25,
                 shape: 1,
@@ -374,6 +381,46 @@ class LiquidGlassRenderer: NSObject, MTKViewDelegate {
         ]
     }
 
+    func setDarkMode(_ enabled: Bool, animated: Bool = true) {
+        let now = CFAbsoluteTimeGetCurrent()
+        updateThemeProgress(at: now)
+
+        themeStartLevel = animated ? themeLevel : (enabled ? 1.0 : 0.0)
+        themeTargetLevel = enabled ? 1.0 : 0.0
+        themeTransitionStart = now
+
+        if !animated {
+            themeLevel = themeTargetLevel
+        }
+    }
+
+    private func updateThemeProgress(at currentTime: CFAbsoluteTime) {
+        let elapsed = Float(currentTime - themeTransitionStart)
+        let progress = min(max(elapsed / themeTransitionDuration, 0.0), 1.0)
+        let eased = progress * progress * (3.0 - 2.0 * progress)
+        themeLevel = themeStartLevel + (themeTargetLevel - themeStartLevel) * eased
+    }
+
+    private func themeMix(_ light: SIMD4<Float>, _ dark: SIMD4<Float>) -> SIMD4<Float> {
+        light + (dark - light) * themeLevel
+    }
+
+    private func themeMix(_ light: Float, _ dark: Float) -> Float {
+        light + (dark - light) * themeLevel
+    }
+
+    private var currentBackground: SIMD4<Float> {
+        themeMix(lightBackground, darkBackground)
+    }
+
+    private var currentClearColor: MTLClearColor {
+        let color = currentBackground
+        return MTLClearColor(red: Double(color.x),
+                             green: Double(color.y),
+                             blue: Double(color.z),
+                             alpha: Double(color.w))
+    }
+
     // MARK: - Initialization
     
     init?(metalView: MTKView) {
@@ -389,10 +436,7 @@ class LiquidGlassRenderer: NSObject, MTKViewDelegate {
         
         metalView.device = device
         metalView.delegate = self
-        metalView.clearColor = MTLClearColor(red: 0.8666666746139526,
-                                              green: 0.8666666746139526,
-                                              blue: 0.8666666746139526,
-                                              alpha: 1.0)
+        metalView.clearColor = currentClearColor
         metalView.colorPixelFormat = .bgra8Unorm
         metalView.framebufferOnly = false
         
@@ -568,7 +612,10 @@ class LiquidGlassRenderer: NSObject, MTKViewDelegate {
         }
         
         let currentTime = CFAbsoluteTimeGetCurrent()
-        var time = Float(currentTime - startTime)
+        updateThemeProgress(at: currentTime)
+        view.clearColor = currentClearColor
+
+        let time = Float(currentTime - startTime)
         let renderSize = CGSize(width: canvasSize.width * resolutionScale,
                                height: canvasSize.height * resolutionScale)
                 // Create or verify ping-pong textures
@@ -585,12 +632,7 @@ class LiquidGlassRenderer: NSObject, MTKViewDelegate {
         let pingPassDescriptor = MTLRenderPassDescriptor()
         pingPassDescriptor.colorAttachments[0].texture = pingTexture
         pingPassDescriptor.colorAttachments[0].loadAction = .clear
-        pingPassDescriptor.colorAttachments[0].clearColor = darkMode
-            ? MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
-            : MTLClearColor(
-                red: Double(backgroundR), green: Double(backgroundG),
-                blue: Double(backgroundB), alpha: Double(backgroundA)
-            )
+        pingPassDescriptor.colorAttachments[0].clearColor = currentClearColor
         pingPassDescriptor.colorAttachments[0].storeAction = .store
         
         let pongPassDescriptor = MTLRenderPassDescriptor()
